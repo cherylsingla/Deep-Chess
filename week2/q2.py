@@ -159,27 +159,42 @@ class History:
         return boards_str
 
     def is_win(self):
+        if 1 not in self.active_board_stats:
+            if self.current_player==1:
+                return 2
+            else:
+                return 1
         # Feel free to implement this in anyway if needed
-        pass
 
     def get_valid_actions(self):
+        actions = []
+        for i in range(len(self.active_board_stats)):
+            if self.active_board_stats[i]==1:
+                for j in range(9):
+                    if self.boards[i][j]=="0":
+                        actions.append((i,j))
+        return actions
         # Feel free to implement this in anyway if needed
-        pass
 
     def is_terminal_history(self):
+        if 1 not in self.active_board_stats:
+            return True
+        return False
         # Feel free to implement this in anyway if needed
-        pass
 
     def get_value_given_terminal_history(self):
         # Feel free to implement this in anyway if needed
-        pass
+        if self.is_win()==1:
+            return 1
+        elif self.is_win()==2:
+            return -1
 
 
 def alpha_beta_pruning(history_obj, alpha, beta, max_player_flag):
     """
         Calculate the maxmin value given a History object using alpha beta pruning. Use the specific move order to
         speedup (more pruning, less memory).
-
+    
     :param history_obj: History class object
     :param alpha: -math.inf
     :param beta: math.inf
@@ -189,6 +204,35 @@ def alpha_beta_pruning(history_obj, alpha, beta, max_player_flag):
     # These two already given lines track the visited histories.
     global visited_histories_list
     visited_histories_list.append(history_obj.history)
+    if history_obj.is_terminal_history():
+        return history_obj.get_value_given_terminal_history()
+    if max_player_flag:
+        utility=-math.inf
+        actions=history_obj.get_valid_actions()
+        priority = {4: 1,0: 2, 2: 2, 6: 2, 8: 2,1: 3, 3: 3, 5: 3, 7: 3}
+        actions.sort(key=lambda x:priority.get(x[1],99))
+        for (i,j) in actions:
+            new_history = History(num_boards=history_obj.num_boards,history=history_obj.history + [i*9+j])
+            eval=alpha_beta_pruning(new_history,alpha,beta,False)
+            utility=max(utility,eval)
+            alpha=max(alpha,utility)
+            if beta<=alpha:
+                break
+        return utility
+    else:
+        utility=math.inf
+        actions=history_obj.get_valid_actions()
+        priority = {4: 1,0: 2, 2: 2, 6: 2, 8: 2,1: 3, 3: 3, 5: 3, 7: 3}
+        actions.sort(key=lambda x:priority.get(x[1],99))
+        for (i,j) in actions:
+            new_history = History(num_boards=history_obj.num_boards,history=history_obj.history + [i*9+j])
+            eval=alpha_beta_pruning(new_history,alpha,beta,True)
+            utility=min(utility,eval)
+            beta=min(beta,utility)
+            if beta<=alpha:
+                break
+        return utility
+
     # TODO implement
     return -2
     # TODO implement
@@ -206,8 +250,29 @@ def maxmin(history_obj, max_player_flag):
     # self.boards and value represents the maxmin value. Use the get_boards_str function in History class to get
     # the key corresponding to self.boards.
     global board_positions_val_dict
+    if history_obj.get_boards_str() in board_positions_val_dict:
+        return board_positions_val_dict[history_obj.get_boards_str()]
+    if history_obj.is_terminal_history():
+        board_positions_val_dict[history_obj.get_boards_str()]=history_obj.get_value_given_terminal_history()
+        return board_positions_val_dict[history_obj.get_boards_str()]
+    if max_player_flag:
+        actions=history_obj.get_valid_actions()
+        utility=float('-inf')
+        for (i,j) in actions:
+            new_history = History(num_boards=history_obj.num_boards,history=history_obj.history + [i*9+j])
+            utility=max(utility,maxmin(new_history,False))
+        board_positions_val_dict[history_obj.get_boards_str()]= utility
+        return utility
+    else:
+        actions=history_obj.get_valid_actions()
+        utility=float('inf')
+        for (i,j) in actions:
+            new_history = History(num_boards=history_obj.num_boards,history=history_obj.history + [i*9+j])
+            utility=min(utility,maxmin(new_history,True))
+        board_positions_val_dict[history_obj.get_boards_str()]= utility
+        return utility   
     # TODO implement
-    return -2
+
     # TODO implement
 
 
